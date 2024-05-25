@@ -1,7 +1,14 @@
 use nix::libc::siginfo_t;
 use std::error::Error;
 use std::os::raw::{c_int, c_void};
+
 use std::fs::File;
+use std::io::{self, Read, Seek, SeekFrom};
+use object::{Object, ObjectSegment};
+
+use nix::sys::signal::{sigaction, SigAction, SigHandler, SigSet, SaFlags};
+
+
 
 mod runner;
 
@@ -22,20 +29,44 @@ fn read_segments(filename: &str) -> Result<Vec<object::Segment>, Box<dyn Error>>
 
 fn print_segments(segments: &[object::Segment]) {
     // !TODO: Print the segment information to stderr.
+    eprintln!("Segments");
+    for (i, segment) in segments.iter().enumerate() {
+        eprintln!(
+            "{}\t{:#x}\t{}\t{:#x}\t{}\t{:?}",
+            i,
+            segment.address(),
+            segment.size(),
+            segment.file_range().0,
+            segment.file_range().1,
+            segment.flags()
+        );
+    }
 }
 
 fn determine_base_address(segments: &[object::Segment]) -> u64 {
     // !TODO: Determine the base address for loading segments.
-    0 // Placeholder
+    segments.iter().map(|s| s.address()).min().unwrap_or(0)
 }
 
 fn determine_entry_point(filename: &str) -> Result<u64, Box<dyn Error>> {
     // !TODO: Extract the entry point address from the ELF header.
-    Ok(0) // Placeholder
+    let mut file = File::open(filename)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    let obj_file = object::File::parse(&*buffer)?;
+    Ok(obj_file.entry())
 }
 
 fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
     // !TODO: Set up the signal handler to handle SIGSEGV signals.
+    let sig_action = SigAction::new(
+        SigHandler::SigAction(sigsegv_handler),
+        SaFlags::SA_SIGINFO,
+        SigSet::empty(),
+    );
+    unsafe {
+        sigaction(nix::sys::signal::Signal::SIGSEGV, &sig_action)?;
+    }
     Ok(())
 }
 
@@ -76,6 +107,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         eprintln!("Usage: {} <path-to-executable>", args[0]);
         std::process::exit(1);
     }
+
+    exec(&args[1])?;
 
     Ok(())
 }
