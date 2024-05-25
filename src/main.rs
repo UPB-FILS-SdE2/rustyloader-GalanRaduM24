@@ -4,7 +4,7 @@ use std::error::Error;
 use std::os::raw::{c_int, c_void};
 use std::fs::File;
 use std::io::Read;
-se std::path::Path;
+use std::path::Path;
 
 mod runner;
 
