@@ -19,6 +19,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
     // Otherwise, handle invalid memory access.
     
     // Placeholder for handling page fault.
+    
     std::process::exit(0);
 }
 
