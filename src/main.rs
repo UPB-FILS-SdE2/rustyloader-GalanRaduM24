@@ -1,56 +1,68 @@
 use nix::libc::siginfo_t;
 use std::error::Error;
 use std::os::raw::{c_int, c_void};
-
 use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io::{self, Read};
 use object::{Object, ObjectSegment};
-
 use nix::sys::signal::{sigaction, SigAction, SigHandler, SigSet, SaFlags};
-
-
+use nix::sys::mman::{mmap, MapFlags, ProtFlags};
+use std::ptr;
 
 mod runner;
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    // map pages
+    eprintln!("Segmentation fault at address {:#x}", address);
 
-    // !TODO: Handle the page fault, map the page if it's a valid access
-    // and belongs to an unmapped page in a segment. Otherwise, handle
-    // invalid memory access.
-    eprint!("Segmentation fault at address {:#x}\n", address);
-    std::process::exit(0);
+    // !TODO: Handle the page fault
+    // Map the page if it's a valid access and belongs to an unmapped page in a segment.
+    // Otherwise, handle invalid memory access.
+    
+    // Placeholder for handling page fault.
+    std::process::exit(-200);
 }
 
-fn read_segments(filename: &str) -> Result<Vec<object::Segment>, Box<dyn Error>> {
-    // !TODO: Read the ELF file specified by filename and extract segment information.
-    Ok(Vec::new()) // Placeholder
+fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
+    let mut file = File::open(filename)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    let obj_file = object::File::parse(&*buffer)?;
+
+    let segments = obj_file
+        .segments()
+        .map(|segment| (
+            segment.address(),
+            segment.size(),
+            segment.file_range().0,
+            segment.file_range().1,
+            segment.file_range().1 - segment.file_range().0,
+            segment.flags(),
+        ))
+        .collect();
+
+    Ok(segments)
 }
 
-fn print_segments(segments: &[object::Segment]) {
-    // !TODO: Print the segment information to stderr.
+fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) {
     eprintln!("Segments");
     for (i, segment) in segments.iter().enumerate() {
         eprintln!(
             "{}\t{:#x}\t{}\t{:#x}\t{}\t{:?}",
             i,
-            segment.address(),
-            segment.size(),
-            segment.file_range().0,
-            segment.file_range().1,
-            segment.flags()
+            segment.0,
+            segment.1,
+            segment.2,
+            segment.3,
+            segment.5
         );
     }
 }
 
-fn determine_base_address(segments: &[object::Segment]) -> u64 {
-    // !TODO: Determine the base address for loading segments.
-    segments.iter().map(|s| s.address()).min().unwrap_or(0)
+fn determine_base_address(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) -> u64 {
+    segments.iter().map(|s| s.0).min().unwrap_or(0)
 }
 
 fn determine_entry_point(filename: &str) -> Result<u64, Box<dyn Error>> {
-    // !TODO: Extract the entry point address from the ELF header.
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
@@ -59,7 +71,6 @@ fn determine_entry_point(filename: &str) -> Result<u64, Box<dyn Error>> {
 }
 
 fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
-    // !TODO: Set up the signal handler to handle SIGSEGV signals.
     let sig_action = SigAction::new(
         SigHandler::SigAction(sigsegv_handler),
         SaFlags::SA_SIGINFO,
@@ -71,30 +82,28 @@ fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
-
 fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
-    // read ELF segments
+    // Step 1: Read ELF segments
     println!("Reading ELF segments...");
     let segments = read_segments(filename)?;
 
-    // print segments
+    // Step 2: Print Segments
     println!("Segments:");
     print_segments(&segments);
 
-    // determine base address
+    // Step 3: Determine Base Address
     println!("Determining base address...");
     let base_address = determine_base_address(&segments);
 
-    // determine entry point
+    // Step 4: Determine Entry Point
     println!("Determining entry point...");
     let entry_point = determine_entry_point(filename)?;
 
-    // register SIGSEGV handler
+    // Step 5: Register SIGSEGV Handler
     println!("Registering SIGSEGV handler...");
-    register_sigsegv_handler();
+    register_sigsegv_handler()?;
 
-    // run ELF using runner::exec_run
+    // Step 6: Run ELF using runner::exec_run
     println!("Running ELF...");
     runner::exec_run(base_address as usize, entry_point as usize);
 
@@ -102,7 +111,7 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // load ELF provided within the first argument
+    // Load ELF provided within the first argument
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: {} <path-to-executable>", args[0]);
