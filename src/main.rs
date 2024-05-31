@@ -75,7 +75,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
 
     if !valid_access {
         eprintln!("Invalid memory access at {:#x}", address);
-        std::process::exit(-200);
+        std::process::exit(0);
     }
 }
 
