@@ -20,7 +20,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
     // and belongs to an unmapped page in a segment. Otherwise, handle
     // invalid memory access.
     eprint!("Segmentation fault at address {:#x}\n", address);
-    std::process::exit(0);
+    std::process::exit(-200);
 }
 
 fn read_segments(filename: &str) -> Result<Vec<object::Segment>, Box<dyn Error>> {
