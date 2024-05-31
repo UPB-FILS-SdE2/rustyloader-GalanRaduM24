@@ -19,6 +19,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
     // !TODO: Handle the page fault, map the page if it's a valid access
     // and belongs to an unmapped page in a segment. Otherwise, handle
     // invalid memory access.
+    eprint!("Segmentation fault at address {:#x}\n", address);
     std::process::exit(0);
 }
 
