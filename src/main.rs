@@ -13,11 +13,11 @@ mod runner;
 
 // Signal handler context
 struct SegmentationContext {
-    segments: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)>,
+    segments: Vec<(u64, u64, u64, u64, object::SegmentFlags)>,
 }
 
 impl SegmentationContext {
-    fn new(segments: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)>) -> Self {
+    fn new(segments: Vec<(u64, u64, u64, u64, object::SegmentFlags)>) -> Self {
         SegmentationContext { segments }
     }
 
@@ -28,20 +28,27 @@ impl SegmentationContext {
                 let page_start = address & !(page_size - 1);
                 let segment_offset = page_start as u64 - segment.0;
                 let length = (segment.1 - segment_offset).min(page_size as u64);
-                let prot = segment_flags_to_prot_flags(segment.5);
+                let prot = segment_flags_to_prot_flags(segment.4);
+
+                eprintln!(
+                    "Mapping page at address {:#x} with length {:#x} and protection {:?}",
+                    page_start, length, prot
+                );
 
                 unsafe {
-                if let Ok(_) = mmap(
-                    page_start as *mut c_void,
-                    length as usize,
-                    prot,
-                    MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
-                    -1,
-                    0,
-                ) {
-                    return true;
+                    if mmap(
+                        page_start as *mut c_void,
+                        length as usize,
+                        prot,
+                        MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
+                        -1,
+                        0,
+                    ).is_ok() {
+                        return true;
+                    } else {
+                        eprintln!("mmap failed at address {:#x} with length {:#x} and protection {:?}", page_start, length, prot);
+                    }
                 }
-            }
             }
         }
         false
@@ -50,9 +57,8 @@ impl SegmentationContext {
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    //eprintln!("Segmentation fault at address: {:#x}", address);
+    eprintln!("Segmentation fault at address: {:#x}", address);
 
-    // Use a closure to access the context in a safe manner
     let handler = |address: usize| -> bool {
         unsafe {
             if let Some(context) = CONTEXT.as_ref() {
@@ -63,8 +69,8 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
     };
 
     if !handler(address) {
-        //eprintln!("Failed to handle segmentation fault at address: {:#x}", address);
-        std::process::exit(0);
+        eprintln!("Failed to handle segmentation fault at address: {:#x}", address);
+        std::process::exit(1);
     }
 }
 
@@ -81,21 +87,20 @@ fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
     }
 }
 
-fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
+fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
     let obj_file = object::File::parse(&*buffer)?;
 
-    let segments: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = obj_file
+    let segments: Vec<(u64, u64, u64, u64, object::SegmentFlags)> = obj_file
         .segments()
         .map(|segment| (
             segment.address(),
             segment.size(),
             segment.file_range().0,
             segment.file_range().1,
-            segment.file_range().1 - segment.file_range().0,
             segment.flags(),
         ))
         .collect();
@@ -103,7 +108,7 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object:
     Ok(segments)
 }
 
-fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) {
+fn print_segments(segments: &[(u64, u64, u64, u64, object::SegmentFlags)]) {
     eprintln!("Segments");
     for (i, segment) in segments.iter().enumerate() {
         eprintln!(
@@ -112,8 +117,8 @@ fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) 
             segment.0,
             segment.1,
             segment.2,
-            segment.4,
-            parse_flags(&segment.5)
+            segment.3,
+            parse_flags(&segment.4)
         );
     }
 }
@@ -146,7 +151,7 @@ fn determine_entry_point(filename: &str) -> Result<u64, Box<dyn Error>> {
     Ok(obj_file.entry())
 }
 
-fn determine_base_address(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) -> u64 {
+fn determine_base_address(segments: &[(u64, u64, u64, u64, object::SegmentFlags)]) -> u64 {
     segments.iter().map(|s| s.0).min().unwrap_or(0)
 }
 
@@ -190,7 +195,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: {} <path-to-executable>", args[0]);
-        std::process::exit(0);
+        std::process::exit(1);
     }
 
     exec(&args[1])?;
