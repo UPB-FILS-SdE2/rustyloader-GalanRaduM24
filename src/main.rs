@@ -56,7 +56,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
         }
     }
 
-    std::process::exit(EXIT_SUCCESS);
+    std::process::exit(0);
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
