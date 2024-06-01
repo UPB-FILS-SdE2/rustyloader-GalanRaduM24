@@ -174,7 +174,8 @@ fn determine_base_address(segments: &[(u64, u64, u64, u64, object::SegmentFlags)
     segments.iter().map(|s| s.0).min().unwrap_or(0)
 }
 
-fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
+fn register_sigsegv_handler() -> Result<(),
+Box<dyn Error>> {
     // Register the signal handler
     let sig_action = SigAction::new(
         SigHandler::SigAction(sigsegv_handler),
