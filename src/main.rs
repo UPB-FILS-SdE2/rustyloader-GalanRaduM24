@@ -44,6 +44,12 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
                         -1,
                         0,
                     ).expect("mmap failed");
+
+                    // Initialize the mapped region to zero if it's BSS
+                    if segment.2 == 0 && segment.4 == 0 {
+                        std::ptr::write_bytes(page_start as *mut u8, 0, length as usize);
+                    }
+                    
                     return;
                 }
             }
