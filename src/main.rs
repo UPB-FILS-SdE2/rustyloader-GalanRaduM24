@@ -75,16 +75,13 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
-    match flags {
-        object::SegmentFlags::Elf { p_flags } => {
-            let mut prot_flags = ProtFlags::empty();
-            if p_flags & 0x1 != 0 { prot_flags |= ProtFlags::PROT_EXEC; }
-            if p_flags & 0x2 != 0 { prot_flags |= ProtFlags::PROT_WRITE; }
-            if p_flags & 0x4 != 0 { prot_flags |= ProtFlags::PROT_READ; }
-            prot_flags
-        }
-        _ => ProtFlags::empty(),
+    let mut prot_flags = ProtFlags::empty();
+    if let object::SegmentFlags::Elf { p_flags } = flags {
+        if p_flags & 0x1 != 0 { prot_flags |= ProtFlags::PROT_EXEC; }
+        if p_flags & 0x2 != 0 { prot_flags |= ProtFlags::PROT_WRITE; }
+        if p_flags & 0x4 != 0 { prot_flags |= ProtFlags::PROT_READ; }
     }
+    prot_flags
 }
 
 fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
@@ -124,14 +121,13 @@ fn print_segments(segments: &[(u64, u64, u64, u64, object::SegmentFlags)]) {
 }
 
 fn parse_flags(flags: &object::SegmentFlags) -> String {
-    match flags {
-        object::SegmentFlags::Elf { p_flags } => {
-            let read = if p_flags & 0x4 != 0 { "r" } else { "-" };
-            let write = if p_flags & 0x2 != 0 { "w" } else { "-" };
-            let execute = if p_flags & 0x1 != 0 { "x" } else { "-" };
-            format!("{}{}{}", read, write, execute)
-        }
-        _ => "???".to_string(),
+    if let object::SegmentFlags::Elf { p_flags } = flags {
+        let read = if p_flags & 0x4 != 0 { "r" } else { "-" };
+        let write = if p_flags & 0x2 != 0 { "w" } else { "-" };
+        let execute = if p_flags & 0x1 != 0 { "x" } else { "-" };
+        format!("{}{}{}", read, write, execute)
+    } else {
+        "???".to_string()
     }
 }
 
