@@ -12,6 +12,7 @@ use nix::unistd::SysconfVar;
 mod runner;
 
 static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec::new();
+static mut EXIT_CODE: i32 = 0;
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
@@ -40,7 +41,9 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
         }
     }
 
-    std::process::exit(0);
+    unsafe {
+        std::process::exit(EXIT_CODE);
+    }
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
@@ -136,7 +139,11 @@ fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
+fn exec(filename: &str, exit_code: i32) -> Result<(), Box<dyn Error>> {
+    unsafe {
+        EXIT_CODE = exit_code;
+    }
+
     let segments = read_segments(filename)?;
     print_segments(&segments);
 
@@ -155,12 +162,14 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: {} <path-to-executable>", args[0]);
+    if args.len() != 3 {
+        eprintln!("Usage: {} <path-to-executable> <exit-code>", args[0]);
         std::process::exit(1);
     }
 
-    exec(&args[1])?;
+    let exit_code: i32 = args[2].parse().unwrap_or(0);
+
+    exec(&args[1], exit_code)?;
 
     Ok(())
 }
