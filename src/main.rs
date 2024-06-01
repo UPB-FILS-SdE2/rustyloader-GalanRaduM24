@@ -84,6 +84,11 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object:
         ))
         .collect();
 
+    // Debugging information
+    for (i, segment) in segments.iter().enumerate() {
+        eprintln!("Segment {}: Address = {:#x}, Size = {}, Offset = {:#x}, Length = {}, Flags = {:?}", i, segment.0, segment.1, segment.2, segment.4, segment.5);
+    }
+
     Ok(segments)
 }
 
@@ -157,6 +162,10 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     print_base_address(base_address);
 
     register_sigsegv_handler()?;
+
+    unsafe {
+        SEGMENTS = segments;
+    }
 
     runner::exec_run(base_address as usize, entry_point as usize);
 
