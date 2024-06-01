@@ -14,30 +14,31 @@ static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec:
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
 
-
-    eprintln!("Segmentation fault at address {:#x}", address);
-
     unsafe {
-        for segment in &SEGMENTS {
-            if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
-                let page_start = address & !(4096 - 1);
-                let prot = segment_flags_to_prot_flags(segment.5);
+        if let Some(page_size) = nix::unistd::sysconf(nix::unistd::SysconfVar::PAGE_SIZE).ok().flatten() {
+            let page_size = page_size as usize;
+            for segment in &SEGMENTS {
+                if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
+                    let page_start = address & !(page_size - 1);
+                    let segment_offset = page_start as u64 - segment.0;
+                    let length = segment.1 - segment_offset;
+                    let prot = segment_flags_to_prot_flags(segment.5);
 
-                mmap(
-                    page_start as *mut c_void,
-                    4096,
-                    prot,
-                    MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
-                    -1,
-                    0,
-                ).expect("mmap failed");
-                return;
+                    mmap(
+                        page_start as *mut c_void,
+                        length as usize,
+                        prot,
+                        MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
+                        -1,
+                        0,
+                    ).expect("mmap failed");
+                    return;
+                }
             }
         }
     }
 
-    //eprintln!("Invalid memory access at address {:#x}", address);
-    std::process::exit(-0);
+    std::process::exit(-1);
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
@@ -70,11 +71,6 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object:
             segment.flags(),
         ))
         .collect();
-/*
-    for (i, segment) in segments.iter().enumerate() {
-        eprintln!("Segment {}: Address = {:#x}, Size = {}, Offset = {:#x}, Length = {}, Flags = {:?}", i, segment.0, segment.1, segment.2, segment.4, segment.5);
-    }
-    */
 
     Ok(segments)
 }
@@ -139,24 +135,17 @@ fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
 }
 
 fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
-    //println!("Reading ELF segments...");
     let segments = read_segments(filename)?;
-
-    //println!("Segments:");
     print_segments(&segments);
 
-    //println!("Determining entry point...");
     let entry_point = determine_entry_point(filename)?;
     print_entry_point(entry_point);
 
-    //println!("Determining base address...");
     let base_address = determine_base_address(&segments);
     print_base_address(base_address);
 
-    //println!("Registering SIGSEGV handler...");
     register_sigsegv_handler()?;
 
-    //println!("Running ELF...");
     runner::exec_run(base_address as usize, entry_point as usize);
 
     Ok(())
