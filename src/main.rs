@@ -150,6 +150,9 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     // Step 1: Read ELF segments
     println!("Reading ELF segments...");
     let segments = read_segments(filename)?;
+    unsafe {
+        SEGMENTS = segments.clone();
+    }
 
     // Step 2: Print Segments
     println!("Segments:");
