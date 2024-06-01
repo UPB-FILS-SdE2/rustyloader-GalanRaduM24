@@ -1,4 +1,4 @@
-use nix::libc::siginfo_t;
+use nix::libc::{siginfo_t, EXIT_SUCCESS};
 use std::error::Error;
 use std::os::raw::{c_int, c_void};
 use std::fs::File;
@@ -55,7 +55,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
         }
     }
 
-    std::process::exit(-200);
+    std::process::exit(EXIT_SUCCESS);
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
