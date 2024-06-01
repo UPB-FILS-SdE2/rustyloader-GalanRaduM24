@@ -13,7 +13,9 @@ static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec:
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    //eprintln!("Segmentation fault at address {:#x}", address);
+
+
+    eprintln!("Segmentation fault at address {:#x}", address);
 
     unsafe {
         for segment in &SEGMENTS {
