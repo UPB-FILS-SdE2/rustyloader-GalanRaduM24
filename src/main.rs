@@ -26,6 +26,8 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
             // Map page
             let page_size = page_size as usize;
             for segment in addr_of!(SEGMENTS).read().iter() {
+                //eprintln!(
+                //    "Checking segment: start {:#x}, size {:#x}",
                 //    segment.0, segment.1
                 //);
                 if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
