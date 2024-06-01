@@ -10,16 +10,69 @@ use std::ptr;
 
 mod runner;
 
+const PAGE_SIZE: usize = 4096;
+
+static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec::new();
+
 // Signal handler for page faults
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
     eprintln!("Segmentation fault at address {:#x}", address);
 
-    // TODO: Handle the page fault
-    // Map the page if it's a valid access and belongs to an unmapped page in a segment.
-    // Otherwise, handle invalid memory access.
-    
-    std::process::exit(0);
+    unsafe {
+        for segment in &SEGMENTS {
+            if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
+                let page_start = address & !(PAGE_SIZE - 1);
+                let prot = parse_prot_flags(&segment.5);
+
+                let result = mmap(
+                    page_start as *mut c_void,
+                    PAGE_SIZE,
+                    prot,
+                    MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
+                    -1,
+                    0,
+                );
+
+                if result.is_err() {
+                    eprintln!("Failed to map memory at {:#x}", page_start);
+                    std::process::exit(-200);
+                }
+
+                return;
+            }
+        }
+    }
+
+    eprintln!("Invalid memory access at address {:#x}", address);
+    std::process::exit(-200);
+}
+
+// Parse segment flags to a human-readable format
+fn parse_flags(flags: &object::SegmentFlags) -> String {
+    match flags {
+        object::SegmentFlags::Elf { p_flags } => {
+            let read = if p_flags & 0x4 != 0 { "r" } else { "-" };
+            let write = if p_flags & 0x2 != 0 { "w" } else { "-" };
+            let execute = if p_flags & 0x1 != 0 { "x" } else { "-" };
+            format!("{}{}{}", read, write, execute)
+        }
+        _ => "???".to_string(),
+    }
+}
+
+// Convert segment flags to protection flags for mmap
+fn parse_prot_flags(flags: &object::SegmentFlags) -> ProtFlags {
+    match flags {
+        object::SegmentFlags::Elf { p_flags } => {
+            let mut prot = ProtFlags::empty();
+            if p_flags & 0x4 != 0 { prot |= ProtFlags::PROT_READ; }
+            if p_flags & 0x2 != 0 { prot |= ProtFlags::PROT_WRITE; }
+            if p_flags & 0x1 != 0 { prot |= ProtFlags::PROT_EXEC; }
+            prot
+        }
+        _ => ProtFlags::empty(),
+    }
 }
 
 // Read segments from the ELF file
@@ -41,11 +94,6 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object:
         ))
         .collect();
     
-    // Debug print to verify segment parsing
-    for (i, segment) in segments.iter().enumerate() {
-        eprintln!("Segment {}: Address = {:#x}, Size = {}, Offset = {:#x}, Length = {}, Flags = {:?}", i, segment.0, segment.1, segment.2, segment.4, segment.5);
-    }
-
     Ok(segments)
 }
 
@@ -53,13 +101,13 @@ fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) 
     eprintln!("Segments");
     for (i, segment) in segments.iter().enumerate() {
         eprintln!(
-            "{}\t{:#x}\t{}\t{:#x}\t{}\t{:?}",
+            "{}\t{:#x}\t{}\t{:#x}\t{}\t{}",
             i,
             segment.0,
             segment.1,
             segment.2,
             segment.4,
-            segment.5
+            parse_flags(&segment.5)
         );
     }
 }
@@ -72,7 +120,7 @@ fn print_base_address(base_address: u64) {
     eprintln!("Base address {:#x}", base_address);
 }
 
-// Determine the base address for loading segments
+// Determine the entry point for the ELF file
 fn determine_entry_point(filename: &str) -> Result<u64, Box<dyn Error>> {
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
@@ -81,6 +129,7 @@ fn determine_entry_point(filename: &str) -> Result<u64, Box<dyn Error>> {
     Ok(obj_file.entry())
 }
 
+// Determine the base address for loading segments
 fn determine_base_address(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) -> u64 {
     segments.iter().map(|s| s.0).min().unwrap_or(0)
 }
@@ -103,6 +152,9 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     // Step 1: Read ELF segments
     println!("Reading ELF segments...");
     let segments = read_segments(filename)?;
+    unsafe {
+        SEGMENTS = segments.clone();
+    }
 
     // Step 2: Print Segments
     println!("Segments:");
