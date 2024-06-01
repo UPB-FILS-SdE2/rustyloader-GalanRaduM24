@@ -57,7 +57,7 @@ impl SegmentationContext {
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    eprintln!("Segmentation fault at address: {:#x}", address);
+    //eprintln!("Segmentation fault at address: {:#x}", address);
 
     let handler = |address: usize| -> bool {
         unsafe {
@@ -70,8 +70,10 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
 
     if !handler(address) {
         eprintln!("Failed to handle segmentation fault at address: {:#x}", address);
-        std::process::exit(1);
+        std::process::exit(0);
     }
+    std::process::exit(0);
+
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
