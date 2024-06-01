@@ -72,7 +72,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
         eprintln!("Failed to handle segmentation fault at address: {:#x}", address);
         std::process::exit(56);
     }
-    std::process::exit(0);
+    //std::process::exit(0);
 
 }
 
