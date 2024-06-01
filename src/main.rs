@@ -175,8 +175,13 @@ fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
 fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     // Read segments
     let segments = read_segments(filename)?;
-    print_segments(&segments);
 
+    // Store segments
+    unsafe {
+        SEGMENTS = segments.clone();
+    }
+
+    print_segments(&segments);
 
     // Determine entry point
     let entry_point = determine_entry_point(filename)?;
