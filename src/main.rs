@@ -17,7 +17,7 @@ static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec:
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     // Get address
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    eprintln!("Segmentation fault at address: {:#x}", address);
+    //eprintln!("Segmentation fault at address: {:#x}", address);
 
     unsafe {
         // Get page size
@@ -55,7 +55,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
         }
     }
 
-    std::process::exit(0);
+    std::process::exit(-200);
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
