@@ -6,6 +6,8 @@ use std::io::{self, Read};
 use object::{Object, ObjectSegment};
 use nix::sys::signal::{sigaction, SigAction, SigHandler, SigSet, SaFlags};
 use nix::sys::mman::{mmap, MapFlags, ProtFlags};
+use nix::unistd::sysconf;
+use nix::unistd::SysconfVar;
 
 mod runner;
 
@@ -15,7 +17,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
     let address = unsafe { (*siginfo).si_addr() } as usize;
 
     unsafe {
-        if let Some(page_size) = nix::unistd::sysconf(nix::unistd::SysconfVar::PAGE_SIZE).ok().flatten() {
+        if let Some(page_size) = sysconf(SysconfVar::PAGE_SIZE).ok().flatten() {
             let page_size = page_size as usize;
             for segment in &SEGMENTS {
                 if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
