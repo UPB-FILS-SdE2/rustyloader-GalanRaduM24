@@ -190,7 +190,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: {} <path-to-executable>", args[0]);
-        std::process::exit(1);
+        std::process::exit(0);
     }
 
     exec(&args[1])?;
