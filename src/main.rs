@@ -137,24 +137,24 @@ fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
 }
 
 fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
-    println!("Reading ELF segments...");
+    //println!("Reading ELF segments...");
     let segments = read_segments(filename)?;
 
-    println!("Segments:");
+    //println!("Segments:");
     print_segments(&segments);
 
-    println!("Determining entry point...");
+    //println!("Determining entry point...");
     let entry_point = determine_entry_point(filename)?;
     print_entry_point(entry_point);
 
-    println!("Determining base address...");
+    //println!("Determining base address...");
     let base_address = determine_base_address(&segments);
     print_base_address(base_address);
 
-    println!("Registering SIGSEGV handler...");
+    //println!("Registering SIGSEGV handler...");
     register_sigsegv_handler()?;
 
-    println!("Running ELF...");
+    //println!("Running ELF...");
     runner::exec_run(base_address as usize, entry_point as usize);
 
     Ok(())
