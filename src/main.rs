@@ -29,7 +29,7 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object:
     file.read_to_end(&mut buffer)?;
     let obj_file = object::File::parse(&*buffer)?;
 
-    let segments = obj_file
+    let segments: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = obj_file
         .segments()
         .map(|segment| (
             segment.address(),
@@ -40,11 +40,15 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object:
             segment.flags(),
         ))
         .collect();
+    
+    // Debug print to verify segment parsing
+    for (i, segment) in segments.iter().enumerate() {
+        eprintln!("Segment {}: Address = {:#x}, Size = {}, Offset = {:#x}, Length = {}, Flags = {:?}", i, segment.0, segment.1, segment.2, segment.4, segment.5);
+    }
 
     Ok(segments)
 }
 
-// Print segment information
 fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) {
     eprintln!("Segments");
     for (i, segment) in segments.iter().enumerate() {
@@ -54,24 +58,31 @@ fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) 
             segment.0,
             segment.1,
             segment.2,
-            segment.3,
+            segment.4,
             segment.5
         );
     }
 }
 
-// Determine the base address for loading segments
-fn determine_base_address(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) -> u64 {
-    segments.iter().map(|s| s.0).min().unwrap_or(0)
+fn print_entry_point(entry_point: u64) {
+    eprintln!("Entry point {:#x}", entry_point);
 }
 
-// Determine the entry point from the ELF header
+fn print_base_address(base_address: u64) {
+    eprintln!("Base address {:#x}", base_address);
+}
+
+// Determine the base address for loading segments
 fn determine_entry_point(filename: &str) -> Result<u64, Box<dyn Error>> {
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
     let obj_file = object::File::parse(&*buffer)?;
     Ok(obj_file.entry())
+}
+
+fn determine_base_address(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) -> u64 {
+    segments.iter().map(|s| s.0).min().unwrap_or(0)
 }
 
 // Register the SIGSEGV handler
@@ -100,10 +111,12 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     // Step 3: Determine Base Address
     println!("Determining base address...");
     let base_address = determine_base_address(&segments);
+    print_base_address(base_address);
 
     // Step 4: Determine Entry Point
     println!("Determining entry point...");
     let entry_point = determine_entry_point(filename)?;
+    print_entry_point(entry_point);
 
     // Step 5: Register SIGSEGV Handler
     println!("Registering SIGSEGV handler...");
