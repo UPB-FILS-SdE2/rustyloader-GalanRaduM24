@@ -68,10 +68,11 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object:
             segment.flags(),
         ))
         .collect();
-
+/*
     for (i, segment) in segments.iter().enumerate() {
         eprintln!("Segment {}: Address = {:#x}, Size = {}, Offset = {:#x}, Length = {}, Flags = {:?}", i, segment.0, segment.1, segment.2, segment.4, segment.5);
     }
+    */
 
     Ok(segments)
 }
