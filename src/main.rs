@@ -10,16 +10,51 @@ use std::ptr;
 
 mod runner;
 
+static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec::new();
+
+
 // Signal handler for page faults
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    eprintln!("Segmentation fault at address {:#x}", address);
+    //eprintln!("Segmentation fault at address {:#x}", address);
 
     // TODO: Handle the page fault
     // Map the page if it's a valid access and belongs to an unmapped page in a segment.
     // Otherwise, handle invalid memory access.
     
+    unsafe {
+        for segment in &SEGMENTS {
+            if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
+                let page_start = address & !(4096 - 1);
+                let prot = segment_flags_to_prot_flags(segment.5);
+
+                mmap(
+                    page_start as *mut c_void,
+                    4096,
+                    prot,
+                    MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
+                    -1,
+                    0,
+                ).expect("mmap failed");
+                return;
+            }
+        }
+    }
+
     std::process::exit(0);
+}
+
+fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
+    match flags {
+        object::SegmentFlags::Elf { p_flags } => {
+            let mut prot_flags = ProtFlags::empty();
+            if p_flags & 0x1 != 0 { prot_flags |= ProtFlags::PROT_EXEC; }
+            if p_flags & 0x2 != 0 { prot_flags |= ProtFlags::PROT_WRITE; }
+            if p_flags & 0x4 != 0 { prot_flags |= ProtFlags::PROT_READ; }
+            prot_flags
+        }
+        _ => ProtFlags::empty(),
+    }
 }
 
 // Read segments from the ELF file
