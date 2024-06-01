@@ -2,11 +2,10 @@ use nix::libc::siginfo_t;
 use std::error::Error;
 use std::os::raw::{c_int, c_void};
 use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io::{self, Read};
 use object::{Object, ObjectSegment};
 use nix::sys::signal::{sigaction, SigAction, SigHandler, SigSet, SaFlags};
 use nix::sys::mman::{mmap, MapFlags, ProtFlags};
-use std::ptr;
 
 mod runner;
 
@@ -52,18 +51,6 @@ fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
     }
 }
 
-fn parse_flags(flags: &object::SegmentFlags) -> String {
-    match flags {
-        object::SegmentFlags::Elf { p_flags } => {
-            let read = if p_flags & 0x4 != 0 { "r" } else { "-" };
-            let write = if p_flags & 0x2 != 0 { "w" } else { "-" };
-            let execute = if p_flags & 0x1 != 0 { "x" } else { "-" };
-            format!("{}{}{}", read, write, execute)
-        }
-        _ => "???".to_string(),
-    }
-}
-
 fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
@@ -101,6 +88,18 @@ fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) 
             segment.4,
             parse_flags(&segment.5)
         );
+    }
+}
+
+fn parse_flags(flags: &object::SegmentFlags) -> String {
+    match flags {
+        object::SegmentFlags::Elf { p_flags } => {
+            let read = if p_flags & 0x4 != 0 { "r" } else { "-" };
+            let write = if p_flags & 0x2 != 0 { "w" } else { "-" };
+            let execute = if p_flags & 0x1 != 0 { "x" } else { "-" };
+            format!("{}{}{}", read, write, execute)
+        }
+        _ => "???".to_string(),
     }
 }
 
