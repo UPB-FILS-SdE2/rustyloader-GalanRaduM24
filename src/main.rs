@@ -50,7 +50,7 @@ impl SegmentationContext {
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    eprintln!("Segmentation fault at address: {:#x}", address);
+    //eprintln!("Segmentation fault at address: {:#x}", address);
 
     // Use a closure to access the context in a safe manner
     let handler = |address: usize| -> bool {
