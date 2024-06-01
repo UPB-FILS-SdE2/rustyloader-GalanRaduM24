@@ -3,6 +3,7 @@ use std::error::Error;
 use std::os::raw::{c_int, c_void};
 use std::fs::File;
 use std::io::{self, Read};
+use std::ptr::addr_of;
 use object::{Object, ObjectSegment};
 use nix::sys::signal::{sigaction, SigAction, SigHandler, SigSet, SaFlags};
 use nix::sys::mman::{mmap, MapFlags, ProtFlags};
@@ -24,9 +25,7 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
         if let Some(page_size) = sysconf(SysconfVar::PAGE_SIZE).ok().flatten() {
             // Map page
             let page_size = page_size as usize;
-            for segment in &SEGMENTS {
-                //eprintln!(
-                //    "Checking segment: start {:#x}, size {:#x}",
+            for segment in addr_of!(SEGMENTS).read().iter() {
                 //    segment.0, segment.1
                 //);
                 if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
