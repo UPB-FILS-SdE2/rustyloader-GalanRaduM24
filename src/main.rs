@@ -13,7 +13,7 @@ static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec:
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    eprintln!("Segmentation fault at address {:#x}", address);
+    //eprintln!("Segmentation fault at address {:#x}", address);
 
     unsafe {
         for segment in &SEGMENTS {
@@ -34,8 +34,8 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
         }
     }
 
-    eprintln!("Invalid memory access at address {:#x}", address);
-    std::process::exit(-200);
+    //eprintln!("Invalid memory access at address {:#x}", address);
+    std::process::exit(-0);
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
