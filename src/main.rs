@@ -59,8 +59,20 @@ fn print_segments(segments: &[(u64, u64, u64, u64, u64, object::SegmentFlags)]) 
             segment.1,
             segment.2,
             segment.4,
-            segment.5
+            parse_flags(&segment.5)
         );
+    }
+}
+
+fn parse_flags(flags: &object::SegmentFlags) -> String {
+    match flags {
+        object::SegmentFlags::Elf { p_flags } => {
+            let read = if p_flags & 0x4 != 0 { "r" } else { "-" };
+            let write = if p_flags & 0x2 != 0 { "w" } else { "-" };
+            let execute = if p_flags & 0x1 != 0 { "x" } else { "-" };
+            format!("{}{}{}", read, write, execute)
+        }
+        _ => "???".to_string(),
     }
 }
 
@@ -108,15 +120,15 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     println!("Segments:");
     print_segments(&segments);
 
-    // Step 3: Determine Base Address
-    println!("Determining base address...");
-    let base_address = determine_base_address(&segments);
-    print_base_address(base_address);
-
     // Step 4: Determine Entry Point
     println!("Determining entry point...");
     let entry_point = determine_entry_point(filename)?;
     print_entry_point(entry_point);
+
+    // Step 3: Determine Base Address
+    println!("Determining base address...");
+    let base_address = determine_base_address(&segments);
+    print_base_address(base_address);
 
     // Step 5: Register SIGSEGV Handler
     println!("Registering SIGSEGV handler...");
