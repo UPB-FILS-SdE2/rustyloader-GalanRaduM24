@@ -177,10 +177,6 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     let segments = read_segments(filename)?;
     print_segments(&segments);
 
-    // Save segments for later use
-    unsafe {
-        SEGMENTS = segments.clone();
-    }
 
     // Determine entry point
     let entry_point = determine_entry_point(filename)?;
