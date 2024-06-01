@@ -15,16 +15,26 @@ static mut SEGMENTS: Vec<(u64, u64, u64, u64, u64, object::SegmentFlags)> = Vec:
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
+    eprintln!("Segmentation fault at address: {:#x}", address);
 
     unsafe {
         if let Some(page_size) = sysconf(SysconfVar::PAGE_SIZE).ok().flatten() {
             let page_size = page_size as usize;
             for segment in &SEGMENTS {
+                eprintln!(
+                    "Checking segment: start {:#x}, size {:#x}",
+                    segment.0, segment.1
+                );
                 if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
                     let page_start = address & !(page_size - 1);
                     let segment_offset = page_start as u64 - segment.0;
                     let length = segment.1 - segment_offset;
                     let prot = segment_flags_to_prot_flags(segment.5);
+
+                    eprintln!(
+                        "Mapping page at address {:#x} with length {:#x} and protection {:?}",
+                        page_start, length, prot
+                    );
 
                     mmap(
                         page_start as *mut c_void,
