@@ -177,9 +177,9 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     let segments = read_segments(filename)?;
 
     // Store segments
-    unsafe {
-        SEGMENTS = segments.clone();
-    }
+    //unsafe {
+    //    SEGMENTS = segments.clone();
+    //}
 
     print_segments(&segments);
 
