@@ -30,6 +30,7 @@ impl SegmentationContext {
                 let length = (segment.1 - segment_offset).min(page_size as u64);
                 let prot = segment_flags_to_prot_flags(segment.5);
 
+                unsafe {
                 if let Ok(_) = mmap(
                     page_start as *mut c_void,
                     length as usize,
@@ -40,6 +41,7 @@ impl SegmentationContext {
                 ) {
                     return true;
                 }
+            }
             }
         }
         false
