@@ -25,10 +25,10 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
             // Map page
             let page_size = page_size as usize;
             for segment in &SEGMENTS {
-                eprintln!(
-                    "Checking segment: start {:#x}, size {:#x}",
-                    segment.0, segment.1
-                );
+                //eprintln!(
+                //    "Checking segment: start {:#x}, size {:#x}",
+                //    segment.0, segment.1
+                //);
                 if address >= segment.0 as usize && address < (segment.0 + segment.1) as usize {
                     // Page start address
                     let page_start = address & !(page_size - 1);
@@ -36,10 +36,10 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
                     let length = segment.1 - segment_offset;
                     let prot = segment_flags_to_prot_flags(segment.5);
 
-                    eprintln!(
-                        "Mapping page at address {:#x} with length {:#x} and protection {:?}",
-                        page_start, length, prot
-                    );
+                    //eprintln!(
+                    //    "Mapping page at address {:#x} with length {:#x} and protection {:?}",
+                    //    page_start, length, prot
+                    //);
 
                     mmap(
                         page_start as *mut c_void,
