@@ -92,7 +92,7 @@ fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
 }
 
 fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
-    eprintln!("Reading segments from {}", filename);
+    //eprintln!("Reading segments from {}", filename);
 
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
