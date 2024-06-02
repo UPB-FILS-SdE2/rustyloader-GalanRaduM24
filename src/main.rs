@@ -97,9 +97,8 @@ fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
 }
 
 fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
-    eprint!("Reading segments from file: {}", filename);
     eprintln!("Segments");
-    eprintln!("# address size offset length flags");
+    eprint!("# address size offset length flags");
 
     // Read the object file
     let mut file = File::open(filename)?;
