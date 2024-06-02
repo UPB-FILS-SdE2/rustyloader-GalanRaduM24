@@ -121,7 +121,7 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
             // Adjust address and offset to be page-aligned
             let aligned_addr = address & !(page_size as u64 - 1);
             let aligned_offset = offset & !(page_size as u64 - 1);
-            let adjusted_size = size + (address - aligned_addr);
+            let adjusted_size = ((address + size + page_size as u64 - 1) & !(page_size as u64 - 1)) - aligned_addr;
 
             (
                 aligned_addr,
