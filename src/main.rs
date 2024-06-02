@@ -212,6 +212,7 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     }
 
     // Print segments
+    eprintln!("# address size offset length flags");
     print_segments(&segments);
 
     let entry_point = determine_entry_point(filename)?;
