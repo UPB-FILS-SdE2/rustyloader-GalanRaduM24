@@ -82,7 +82,6 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
-
     // Convert the segment flags to protection flags
     let mut prot_flags = ProtFlags::empty();
 
@@ -117,14 +116,14 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
             let flags = segment.flags();
 
             // Adjust address and offset to be page-aligned
-            let actual_addr = address - (address % page_size as u64);
-            let actual_offset = offset - (offset % page_size as u64);
-            let adjusted_size = size + (address % page_size as u64);
+            let aligned_addr = address & !(page_size as u64 - 1);
+            let aligned_offset = offset & !(page_size as u64 - 1);
+            let adjusted_size = size + (address - aligned_addr);
 
             (
-                actual_addr,
+                aligned_addr,
                 adjusted_size,
-                actual_offset,
+                aligned_offset,
                 length,
                 flags,
             )
@@ -188,8 +187,7 @@ fn determine_base_address(segments: &[(u64, u64, u64, u64, object::SegmentFlags)
     segments.iter().map(|s| s.0).min().unwrap_or(0)
 }
 
-fn register_sigsegv_handler() -> Result<(),
-Box<dyn Error>> {
+fn register_sigsegv_handler() -> Result<(), Box<dyn Error>> {
     // Register the signal handler
     let sig_action = SigAction::new(
         SigHandler::SigAction(sigsegv_handler),
