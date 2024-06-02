@@ -105,16 +105,30 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
     // Parse the object file
     let obj_file = object::File::parse(&*buffer)?;
 
+    let page_size = sysconf(SysconfVar::PAGE_SIZE).unwrap().unwrap() as usize;
+
     // Collect the segments
     let segments: Vec<(u64, u64, u64, u64, object::SegmentFlags)> = obj_file
         .segments()
-        .map(|segment| (
-            segment.address(),
-            segment.size(),
-            segment.file_range().0,
-            segment.file_range().1,
-            segment.flags(),
-        ))
+        .map(|segment| {
+            let address = segment.address();
+            let size = segment.size();
+            let (offset, length) = segment.file_range();
+            let flags = segment.flags();
+
+            // Adjust address and offset to be page-aligned
+            let actual_addr = address - (address % page_size as u64);
+            let actual_offset = offset - (offset % page_size as u64);
+            let adjusted_size = size + (address % page_size as u64);
+
+            (
+                actual_addr,
+                adjusted_size,
+                actual_offset,
+                length,
+                flags,
+            )
+        })
         .collect();
 
     Ok(segments)
