@@ -95,6 +95,8 @@ fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
 }
 
 fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
+    eprintln!("# address size offset length flags");
+
     // Read the object file
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
@@ -111,7 +113,7 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
         .segments()
         .map(|segment| {
             let address = segment.address();
-            let size = segment.size();
+            let size = segment.size() - (address & (page_size as u64 - 1));
             let (offset, length) = segment.file_range();
             let flags = segment.flags();
 
@@ -212,8 +214,6 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     }
 
     // Print segments
-    eprintln!();
-    eprintln!("# address size offset length flags");
     print_segments(&segments);
 
     let entry_point = determine_entry_point(filename)?;
