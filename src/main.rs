@@ -64,7 +64,7 @@ impl SegmentationContext {
 
 extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *mut c_void) {
     let address = unsafe { (*siginfo).si_addr() } as usize;
-    //eprintln!("Segmentation fault at address: {:#x}", address);
+    eprintln!("Segmentation fault at address: {:#x}", address);
 
     let handler = |address: usize| -> bool {
         unsafe {
@@ -76,8 +76,8 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
     };
 
     if !handler(address) {
-        //eprintln!("Failed to handle segmentation fault at address: {:#x}", address);
-        std::process::exit(0);
+        eprintln!("Failed to handle segmentation fault at address: {:#x}", address);
+        std::process::exit(EXIT_SUCCESS);
     }
 }
 
@@ -92,7 +92,7 @@ fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
 }
 
 fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
-    //eprintln!("Reading segments from {}", filename);
+    eprintln!("Reading segments from {}", filename);
 
     let mut file = File::open(filename)?;
     let mut buffer = Vec::new();
@@ -128,7 +128,6 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
 
 fn print_segments(segments: &[(u64, u64, u64, u64, object::SegmentFlags)]) {
     eprintln!("Segments:");
-    eprintln!("# address size offset length flags");
     for (i, segment) in segments.iter().enumerate() {
         eprintln!(
             "{}\t{:#x}\t{}\t{:#x}\t{}\t{}",
@@ -215,7 +214,11 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
 
     register_sigsegv_handler()?;
 
-    Ok(runner::exec_run(base_address as usize, entry_point as usize))
+    unsafe {
+        runner::exec_run(base_address as usize, entry_point as usize);
+    }
+
+    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
