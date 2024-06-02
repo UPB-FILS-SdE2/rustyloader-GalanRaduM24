@@ -45,10 +45,18 @@ impl SegmentationContext {
                         page_start as *mut c_void,
                         length as usize,
                         prot,
-                        MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
+                        MapFlags::MAP_FIXED | MapFlags::MAP_PRIVATE,
                         -1,
                         0,
                     ).is_ok() {
+                        // Load the segment data into the mapped memory
+                        let offset = segment.2 as usize + (segment_offset as usize - page_start);
+                        let mut file = File::open("path-to-executable").unwrap();
+                        file.seek(std::io::SeekFrom::Start(segment.2)).unwrap();
+                        let mut data = vec![0u8; length as usize];
+                        file.read_exact(&mut data).unwrap();
+                        std::ptr::copy_nonoverlapping(data.as_ptr(), page_start as *mut u8, length as usize);
+
                         return true;
                     } else {
                         eprintln!("mmap failed at address {:#x} with length {:#x} and protection {:?}", page_start, length, prot);
@@ -76,9 +84,8 @@ extern "C" fn sigsegv_handler(_signal: c_int, siginfo: *mut siginfo_t, _extra: *
 
     if !handler(address) {
         eprintln!("Failed to handle segmentation fault at address: {:#x}", address);
-        std::process::exit(0);  // Exiting with 0 to satisfy the grader
+        std::process::exit(1);
     }
-    std::process::exit(0);  // Exiting with 0 to satisfy the grader
 }
 
 fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
@@ -226,8 +233,6 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     register_sigsegv_handler()?;
 
     Ok(runner::exec_run(base_address as usize, entry_point as usize))
-
-    
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
