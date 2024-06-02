@@ -144,7 +144,7 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
 }
 
 fn print_segments(segments: &[(u64, u64, u64, u64, object::SegmentFlags)]) {
-    eprintln!("Segments");
+    //eprintln!("Segments");
     // Print the segments
     for (i, segment) in segments.iter().enumerate() {
         eprintln!(
