@@ -95,6 +95,7 @@ fn segment_flags_to_prot_flags(flags: object::SegmentFlags) -> ProtFlags {
 }
 
 fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::SegmentFlags)>, Box<dyn Error>> {
+    eprint!("Segments");
     eprintln!("# address size offset length flags");
 
     // Read the object file
@@ -113,7 +114,7 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
         .segments()
         .map(|segment| {
             let address = segment.address();
-            let size = segment.size() + 80;
+            let size = segment.size();
             let (offset, length) = segment.file_range();
             let flags = segment.flags();
 
