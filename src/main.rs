@@ -212,6 +212,7 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
     }
 
     // Print segments
+    eprintln!();
     eprintln!("# address size offset length flags");
     print_segments(&segments);
 
