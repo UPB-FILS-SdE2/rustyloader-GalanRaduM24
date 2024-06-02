@@ -13,13 +13,11 @@ mod runner;
 
 // Signal handler context
 struct SegmentationContext {
-    // Segments
     segments: Vec<(u64, u64, u64, u64, object::SegmentFlags)>,
     filename: String,
 }
 
 impl SegmentationContext {
-    // Create a new segmentation context
     fn new(segments: Vec<(u64, u64, u64, u64, object::SegmentFlags)>, filename: String) -> Self {
         SegmentationContext { segments, filename }
     }
