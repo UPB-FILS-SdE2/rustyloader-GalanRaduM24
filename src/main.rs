@@ -113,7 +113,7 @@ fn read_segments(filename: &str) -> Result<Vec<(u64, u64, u64, u64, object::Segm
         .segments()
         .map(|segment| {
             let address = segment.address();
-            let size = segment.size() - (address & (page_size as u64 - 1));
+            let size = segment.size() + 80;
             let (offset, length) = segment.file_range();
             let flags = segment.flags();
 
