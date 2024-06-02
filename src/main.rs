@@ -225,9 +225,9 @@ fn exec(filename: &str) -> Result<(), Box<dyn Error>> {
 
     register_sigsegv_handler()?;
 
-    runner::exec_run(base_address as usize, entry_point as usize);
+    Ok(runner::exec_run(base_address as usize, entry_point as usize))
 
-    Ok(())
+    
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
